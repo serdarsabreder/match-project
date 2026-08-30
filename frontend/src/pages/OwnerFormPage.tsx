@@ -60,11 +60,12 @@ export default function OwnerFormPage({ ownerId }: OwnerFormPageProps) {
     }, 250);
   };
 
-  const onPhotosChange = (files: FileList | null) => {
+  const onPhotosChange = (files: FileList | null, input: HTMLInputElement) => {
     const next = files ? Array.from(files) : [];
-    setPhotos(next);
-    setPreviews(next.map((f) => URL.createObjectURL(f)));
+    setPhotos((prev) => [...prev, ...next]);
+    setPreviews((prev) => [...prev, ...next.map((f) => URL.createObjectURL(f))]);
     setErrors((e) => ({ ...e, photos: '' }));
+    input.value = '';
   };
 
   const validate = (): boolean => {
@@ -202,7 +203,7 @@ export default function OwnerFormPage({ ownerId }: OwnerFormPageProps) {
             type="file"
             accept="image/jpeg,image/png"
             multiple
-            onChange={(e) => onPhotosChange(e.target.files)}
+            onChange={(e) => onPhotosChange(e.target.files, e.target)}
           />
           {errors.photos && <span className="form__error">{errors.photos}</span>}
           {previews.length > 0 && (
