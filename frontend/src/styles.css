@@ -1,0 +1,304 @@
+/* Global styles for Match — mobile-first, plain CSS, no frameworks. */
+
+:root {
+  --color-primary: #16a34a;
+  --color-primary-dark: #15803d;
+  --color-bg: #f6f8f7;
+  --color-card: #ffffff;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-error: #dc2626;
+  --color-border: #e5e7eb;
+  --radius: 12px;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+  --max-width: 640px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.app {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.page {
+  animation: fade-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----- Welcome ----- */
+.welcome {
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.welcome h1 {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  margin: 0;
+}
+
+.welcome__subtitle {
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  margin: 0;
+  max-width: 40ch;
+}
+
+/* ----- Buttons ----- */
+.btn {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+/* ----- Forms ----- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--color-card);
+  padding: 24px 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.form__input,
+.form__select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  width: 100%;
+  background: #fff;
+}
+
+.form__input:focus,
+.form__select:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.form__error {
+  color: var(--color-error);
+  font-size: 0.85rem;
+}
+
+.field--invalid .form__input,
+.field--invalid .form__select {
+  border-color: var(--color-error);
+}
+
+.form__notice {
+  background: var(--color-error);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.form__page-title {
+  margin: 8px 0 16px;
+  text-align: center;
+}
+
+/* ----- Field cards ----- */
+.fields-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (min-width: 640px) {
+  .fields-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+.field-card {
+  background: var(--color-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-card__img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.field-card__body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.field-card__name {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.field-card__address {
+  color: var(--color-muted);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.field-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.chip {
+  background: #ecfdf5;
+  color: var(--color-primary-dark);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.field-card__actions {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-card__actions input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ----- States ----- */
+.state-info {
+  text-align: center;
+  color: var(--color-muted);
+  padding: 40px 0;
+}
+
+.state-error {
+  text-align: center;
+  color: var(--color-error);
+  padding: 20px 0;
+}
+
+/* ----- Progress bar ----- */
+.progress {
+  height: 10px;
+  border-radius: 5px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.progress__bar {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 150ms ease;
+}
+
+.progress__label {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* ----- Owner form extras ----- */
+.photos-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.photo-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}

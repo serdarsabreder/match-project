@@ -1,0 +1,8 @@
+# Versions support Python 3.11+ (including 3.14).
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+python-multipart
+pytest
+httpx
