@@ -56,6 +56,17 @@ def _save_photo(file: UploadFile) -> str:
     return f"/uploads/{unique_name}"
 
 
+@app.get("/")
+def root():
+    """Friendly landing page so hitting the backend root isn't a 404."""
+    return {
+        "app": "Match API",
+        "version": app.version,
+        "docs": "/docs",
+        "endpoints": ["/api/register", "/api/fields", "/api/book", "/api/field"],
+    }
+
+
 # --- Users ---
 @app.post("/api/register", response_model=RegisterResponse, status_code=201)
 def register_user(payload: UserCreate, db: Session = Depends(get_db)):

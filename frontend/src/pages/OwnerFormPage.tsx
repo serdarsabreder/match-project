@@ -61,11 +61,26 @@ export default function OwnerFormPage({ ownerId }: OwnerFormPageProps) {
   };
 
   const onPhotosChange = (files: FileList | null, input: HTMLInputElement) => {
-    const next = files ? Array.from(files) : [];
-    setPhotos((prev) => [...prev, ...next]);
-    setPreviews((prev) => [...prev, ...next.map((f) => URL.createObjectURL(f))]);
+    if (!files) return;
+
+    setPhotos((prev) => {
+      const existing = new Set(prev.map((f) => `${f.name}-${f.size}`));
+      const incoming = Array.from(files).filter((f) => !existing.has(`${f.name}-${f.size}`));
+      const merged = [...prev, ...incoming];
+      setPreviews(merged.map((f) => URL.createObjectURL(f)));
+      return merged;
+    });
+
     setErrors((e) => ({ ...e, photos: '' }));
     input.value = '';
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      setPreviews(next.map((f) => URL.createObjectURL(f)));
+      return next;
+    });
   };
 
   const validate = (): boolean => {
@@ -195,7 +210,7 @@ export default function OwnerFormPage({ ownerId }: OwnerFormPageProps) {
 
         <div className={`form__field ${errors.photos ? 'field--invalid' : ''}`}>
           <label className="form__label" htmlFor="photos">
-            Photos (min 4 — all sides)
+            Photos ({photos.length} selected — min 4)
           </label>
           <input
             id="photos"
@@ -209,7 +224,12 @@ export default function OwnerFormPage({ ownerId }: OwnerFormPageProps) {
           {previews.length > 0 && (
             <div className="photos-preview">
               {previews.map((src, i) => (
-                <img key={i} className="photo-thumb" src={src} alt={`Field photo ${i + 1}`} />
+                <div key={i} className="photo-thumb-wrapper">
+                  <img className="photo-thumb" src={src} alt={`Field photo ${i + 1}`} />
+                  <button type="button" className="photo-remove" onClick={() => removePhoto(i)}>
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           )}
