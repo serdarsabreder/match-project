@@ -15,11 +15,24 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Fetch previous audit issue (if any)
+        run: |
+          ISSUE=$(gh issue list --search '"Weekly Payment TODOs"' --state all --json number --jq '.[0].number' || true)
+          if [ -n "$ISSUE" ] && [ "$ISSUE" != "null" ]; then
+            echo "PREV_ISSUE=$ISSUE" >> "$GITHUB_ENV"
+            gh issue view "$ISSUE" --json body --jq '.body' > prev_body.md
+            echo "Loaded previous audit issue #$ISSUE"
+          else
+            echo "No previous audit issue found"
+          fi
 
       - name: Run OpenCode payment audit
         uses: anomalyco/opencode/github@latest
@@ -30,7 +43,7 @@ jobs:
           model: opencode/big-pickle
           use_github_token: true
           prompt: |
-            You are an audit assistant for the Match payments module. Your task is to scan the codebase for TODO, FIXME, and HACK comments related to payments and consolidate them into a single weekly issue.
+            You are an audit assistant for the Match payments module. Your task is to produce the weekly payments-TODOs audit body.
 
             Tech context: Stripe integration, webhook handling, refund logic, currency conversion, and timeout scenarios.
 
@@ -41,10 +54,11 @@ jobs:
                - The exact comment text.
                - A one-sentence summary of what needs to be done.
                - Categorize by type: "timeout handling", "refund logic", "webhook verification", "currency conversion", "other".
-            3. Check if an issue titled "Weekly Payment TODOs" already exists.
-               - If yes: Update its body with new findings. Mark items from previous weeks as resolved if they no longer appear in the code. Add a summary comment with the date and number of new/resolved items.
-               - If no: Create a new issue with title "Weekly Payment TODOs". Add labels "area:payments" and "status:tech-debt".
-            4. Do not create multiple issues. All findings must go into this single issue.
-            5. Ignore TODOs unrelated to payments (e.g., UI tweaks, non-payment infrastructure).
-
-            If no payment-related TODOs are found, still ensure the "Weekly Payment TODOs" issue exists (create it if missing) and note that no new findings were detected this week.
+            3. If a file named "prev_body.md" exists in the repo root, read it (it contains last week's audit issue body). Reconcile: keep items that still appear in the code, note new items, and do not carry over items that no longer exist in the code.
+            4. Do NOT create, update, or comment on any GitHub issue. Instead, use the Write tool to create a file named "payment-todos.md" in the repo root containing the full markdown body for the "Weekly Payment TODOs" issue:
+               - Start with a heading "# Weekly Payment TODOs".
+               - Add a line: "Audit date: <today's date>".
+               - List findings grouped by category, with file path, line number, and a short summary for each.
+               - If there are no payment-related findings, state that clearly.
+            5. Ensure "payment-todos.md" is always written, even when no findings are found.
+            6. Ignore TODOs unrelated to payments (e.g., UI tweaks, non-payment infrastructure).
