@@ -17,16 +17,18 @@ jobs:
        (contains(github.event.comment.body, '/oc') ||
         contains(github.event.comment.body, '/opencode')))
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      pull-requests: read
-      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "opencode-triage"
+          git config --global user.email "opencode-triage@users.noreply.github.com"
 
       - name: Run OpenCode triage
         uses: anomalyco/opencode/github@latest
@@ -37,18 +39,50 @@ jobs:
           model: opencode/big-pickle
           use_github_token: true
           prompt: |
-            You are a triage assistant for the Match app (football field booking platform). Your goal is to classify incoming issues and request minimal reproducible steps so the team can act quickly.
+            You are a triage assistant for the Match app (football field booking platform). Your goal is to classify an incoming ISSUE (number ${{ github.event.issue.number }}) and request minimal reproducible steps so the team can act quickly.
 
             Current tech stack: FastAPI (Python), PostgreSQL, React + FullCalendar, Stripe payments, Cloudinary for images, deployed on Render.
 
-            When an issue is created or a comment with "/oc" appears:
-            1. Read the description and latest comment carefully.
-            2. Assign exactly one area label from this list: "area:booking", "area:payments", "area:ui", "area:api", "area:infra".
-            3. Assign a priority label: "priority:high" if the user cannot book a field or complete a payment; "priority:medium" for degraded experience; "priority:low" for cosmetic issues.
-            4. If the description lacks clear reproduction steps, ask these three specific questions in a polite comment:
-               - "Which field and time slot were you trying to book, and what happened when you clicked 'Book'?"
-               - "What browser/device and OS were you using?"
-               - "Did you see any error message or network error code? If yes, please paste it."
-            5. Do not close the issue. Add a friendly closing sentence: "Thanks for reporting this — we’ll look into it shortly."
+            Read the issue body and the latest comment carefully. Do NOT create, comment on, or label the issue yourself. Do NOT run `gh`. Only write two files to the repo root using the Write tool:
 
-            Remember: your job is classification and clarification, not fixing the bug.
+            1. "triage.md" — a small markdown file with exactly these fields, one per line:
+               Area: <one of: area:booking, area:payments, area:ui, area:api, area:infra>
+               Priority: <one of: priority:high, priority:medium, priority:low>
+               NeedsRepro: <true|false>
+
+            2. Optionally, only when NeedsRepro is true, write "repro-comment.md" — the full polite comment to post to the author, containing EXACTLY these questions:
+               - Which field and time slot were you trying to book, and what happened when you clicked "Book"?
+               - What browser/device and OS were you using?
+               - Did you see any error message or network error code? If yes, please paste it.
+
+               End the comment with the line: Thanks for reporting this — we'll look into it shortly.
+
+            Classification rules:
+            - Area: booking for bookings/slots, payments for Stripe/payment, ui for frontend/visual, api for backend/endpoints, infra for deployment/reliability.
+            - Priority high if the user cannot book a field or complete a payment; medium for degraded experience; low for cosmetic issues.
+            - NeedsRepro is true unless the description already gives clear reproduction steps (steps to reproduce, expected vs actual, environment).
+
+            Always write "triage.md"; write "repro-comment.md" only when NeedsRepro is true.
+
+      - name: Apply triage labels and comment
+        run: |
+          if [ ! -s triage.md ]; then
+            echo "triage.md missing or empty; aborting." >&2
+            exit 1
+          fi
+          AREA=$(sed -n 's/^Area: *//p' triage.md | head -1)
+          PRIORITY=$(sed -n 's/^Priority: *//p' triage.md | head -1)
+          NEEDS_REPRO=$(sed -n 's/^NeedsRepro: *//p' triage.md | head -1 | tr '[:upper:]' '[:lower:]')
+
+          case "$AREA" in area:booking|area:payments|area:ui|area:api|area:infra) ;; *) AREA="" ;; esac
+          case "$PRIORITY" in priority:high|priority:medium|priority:low) ;; *) PRIORITY="" ;; esac
+
+          if [ -n "$AREA" ]; then gh label add "${{ github.event.issue.number }}" "$AREA" || true; fi
+          if [ -n "$PRIORITY" ]; then gh label add "${{ github.event.issue.number }}" "$PRIORITY" || true; fi
+
+          echo "Applied area=$AREA priority=$PRIORITY needs_repro=$NEEDS_REPRO on issue #${{ github.event.issue.number }}"
+
+          if [ "$NEEDS_REPRO" = "true" ] && [ -s repro-comment.md ]; then
+            gh issue comment "${{ github.event.issue.number }}" --body-file repro-comment.md || true
+            echo "Posted repro-questions comment."
+          fi

@@ -29,3 +29,5 @@ backend/*.db
 # Temporal build artifacts (git-ignored so opencode does not auto-commit them)
 payment-todos.md
 prev_body.md
+triage.md
+repro-comment.md
