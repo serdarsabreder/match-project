@@ -1,0 +1,48 @@
+name: opencode-payment-audit
+
+on:
+  schedule:
+    # Weekly: Monday 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode payment audit
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/big-pickle
+          prompt: |
+            You are an audit assistant for the Match payments module. Your task is to scan the codebase for TODO, FIXME, and HACK comments related to payments and consolidate them into a single weekly issue.
+
+            Tech context: Stripe integration, webhook handling, refund logic, currency conversion, and timeout scenarios.
+
+            Steps:
+            1. Search the entire codebase for comments containing "TODO", "FIXME", or "HACK" that mention any of these keywords: "payment", "stripe", "webhook", "refund", "timeout", "currency", "charge", "capture".
+            2. For each finding, record:
+               - File path and line number.
+               - The exact comment text.
+               - A one-sentence summary of what needs to be done.
+               - Categorize by type: "timeout handling", "refund logic", "webhook verification", "currency conversion", "other".
+            3. Check if an issue titled "Weekly Payment TODOs" already exists.
+               - If yes: Update its body with new findings. Mark items from previous weeks as resolved if they no longer appear in the code. Add a summary comment with the date and number of new/resolved items.
+               - If no: Create a new issue with title "Weekly Payment TODOs". Add labels "area:payments" and "status:tech-debt".
+            4. Do not create multiple issues. All findings must go into this single issue.
+            5. Ignore TODOs unrelated to payments (e.g., UI tweaks, non-payment infrastructure).
+
+            If no payment-related TODOs are found, still ensure the "Weekly Payment TODOs" issue exists (create it if missing) and note that no new findings were detected this week.

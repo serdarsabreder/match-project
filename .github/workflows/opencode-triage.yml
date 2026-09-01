@@ -1,0 +1,52 @@
+name: opencode-triage
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  triage:
+    # Auto-triage on issue creation, OR a /oc comment on an ISSUE (not a PR).
+    # PR comments are handled by the interactive opencode workflow instead.
+    if: |
+      github.event_name == 'issues' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request == null &&
+       (contains(github.event.comment.body, '/oc') ||
+        contains(github.event.comment.body, '/opencode')))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode triage
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/big-pickle
+          prompt: |
+            You are a triage assistant for the Match app (football field booking platform). Your goal is to classify incoming issues and request minimal reproducible steps so the team can act quickly.
+
+            Current tech stack: FastAPI (Python), PostgreSQL, React + FullCalendar, Stripe payments, Cloudinary for images, deployed on Render.
+
+            When an issue is created or a comment with "/oc" appears:
+            1. Read the description and latest comment carefully.
+            2. Assign exactly one area label from this list: "area:booking", "area:payments", "area:ui", "area:api", "area:infra".
+            3. Assign a priority label: "priority:high" if the user cannot book a field or complete a payment; "priority:medium" for degraded experience; "priority:low" for cosmetic issues.
+            4. If the description lacks clear reproduction steps, ask these three specific questions in a polite comment:
+               - "Which field and time slot were you trying to book, and what happened when you clicked 'Book'?"
+               - "What browser/device and OS were you using?"
+               - "Did you see any error message or network error code? If yes, please paste it."
+            5. Do not close the issue. Add a friendly closing sentence: "Thanks for reporting this — we’ll look into it shortly."
+
+            Remember: your job is classification and clarification, not fixing the bug.

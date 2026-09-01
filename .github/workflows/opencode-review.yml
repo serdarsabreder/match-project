@@ -1,0 +1,39 @@
+name: opencode-review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode PR review
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/big-pickle
+          prompt: |
+            You are a code reviewer for the Match booking system. Your role is to perform an initial review of the PR and leave actionable comments. You must NOT approve the PR.
+
+            Tech stack context: FastAPI backend with PostgreSQL (time-slot exclusion constraints), React frontend with FullCalendar, Stripe for payments, Cloudinary for media, all containerized for Render.
+
+            Focus your review on these areas:
+            1. Time-slot validation: Confirm that the new code checks for overlapping bookings against existing records in the database. Look for calls to the slot-availability service or direct SQL/ORM checks. Flag any logic that allows double-booking.
+            2. Payment flow: Verify that a booking is only marked as "confirmed" after receiving a verified Stripe webhook event, not just after a successful client-side payment request. Check that webhook signature verification is implemented.
+            3. Error handling: Ensure that all API endpoints return structured error responses and log failures. Flag empty try/catch blocks or swallowed exceptions.
+            4. Tests: Confirm that at least one new test covers the changed booking scenario (e.g., attempting to book an already occupied slot, testing payment failure handling).
+            5. Code quality: Note any duplicated logic, unclear variable names, or missing type hints.
+
+            Leave comments directly on affected lines with clear suggestions. If something looks risky (e.g., bypassing the overlap check), highlight it as a blocker.
