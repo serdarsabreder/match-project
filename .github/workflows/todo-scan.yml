@@ -1,0 +1,141 @@
+name: todo-scan
+
+on:
+  schedule:
+    # Weekly: Monday 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Scan mode'
+        type: choice
+        options:
+          - short
+          - detailed
+        default: short
+      prompt:
+        description: 'Custom prompt used to summarise/group findings'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan:
+    name: Scan and report TODOs/FIXMEs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Define prompt
+        id: prompt
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.prompt }}" ]; then
+            echo "prompt=${{ inputs.prompt }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.mode }}" = "detailed" ]; then
+            echo "prompt=Group the TODO/FIXME findings by file. Within each file, categorize each item as either TODO or FIXME. List them as a markdown table with columns: File, Line, Type, Comment. Keep entries sorted by file path." >> "$GITHUB_OUTPUT"
+          else
+            echo "prompt=find TODOs" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Scan for TODO/FIXME comments
+        id: scan
+        shell: bash
+        run: |
+          set -o pipefail
+          # Conservative scope: application source plus dependency manifests.
+          grep -rniE 'TODO|FIXME' \
+            --include='*.py' \
+            --include='*.ts' \
+            --include='*.tsx' \
+            --include='package.json' \
+            --include='requirements.txt' \
+            . 2>/dev/null \
+            || true
+        # null-glob: grep outside patterns yields no matches; handled by `|| true`.
+
+      - name: Write report to job summary
+        shell: bash
+        run: |
+          {
+            echo "## TODO/FIXME scan"
+            echo ""
+            echo "**Mode:** ${{ inputs.mode }}"
+            echo "**Prompt:** ${{ steps.prompt.outputs.prompt }}"
+            echo ""
+            echo "Scan completed. Raw findings are in the 'Scan for TODO/FIXME comments' step log."
+            echo "In detailed mode, grouped findings are also posted as a GitHub issue."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create grouped issue (detailed mode)
+        if: inputs.mode == 'detailed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT: ${{ steps.prompt.outputs.prompt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCAN_FILE="${{ runner.temp }}/scan-output.txt"
+          # Capture the same grep result used by the report step.
+          { grep -rniE 'TODO|FIXME' \
+              --include='*.py' \
+              --include='*.ts' \
+              --include='*.tsx' \
+              --include='package.json' \
+              --include='requirements.txt' \
+              . 2>/dev/null || true; } > "$SCAN_FILE"
+
+          GROUPED=$(python3 - "$SCAN_FILE" <<'PY'
+          import sys, collections, re, datetime
+
+          path = sys.argv[1]
+          groups = collections.defaultdict(list)
+          try:
+              with open(path) as fh:
+                  for line in fh:
+                      line = line.rstrip("\n")
+                      if not line:
+                          continue
+                      # pattern: ./path:line:match
+                      m = re.match(r'^(\./[^:]+):(\d+):(.*)$', line)
+                      if not m:
+                          groups["?"].append(line)
+                          continue
+                      file, lineno, text = m.group(1), m.group(2), m.group(3)
+                      kind = "FIXME" if re.search(r'FIXME', text, re.IGNORECASE) else "TODO"
+                      groups[file].append((int(lineno), kind, text))
+          except OSError:
+              print("_No matching files or no findings._")
+              sys.exit(0)
+
+          if not groups:
+              print("_No TODO/FIXME comments found._")
+              sys.exit(0)
+
+          total = sum(len(v) for v in groups.values())
+          print(f"**Total findings:** {total}")
+          print("")
+          body = []
+          for file in sorted(groups):
+              body.append(f"### `{file}`")
+              body.append("")
+              body.append("| Line | Type | Comment |")
+              body.append("| --- | --- | --- |")
+              for lineno, kind, text in sorted(groups[file]):
+                  text = text.replace("|", "\\|").strip()
+                  body.append(f"| {lineno} | {kind} | `{text}` |")
+              body.append("")
+          print("\n".join(body))
+          PY
+          )
+
+          TITLE="TODO/FIXME scan — $(date +%Y-%m-%d)"
+          BODY=$(printf '## TODO/FIXME scan (%s)\n\n%s\n' "$(date +%Y-%m-%d)" "$GROUPED")
+          gh issue create --title "$TITLE" --body "$BODY" > /dev/null
+          echo "Created issue: $TITLE"

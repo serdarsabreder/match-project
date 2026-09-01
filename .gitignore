@@ -16,6 +16,11 @@ backend/uploads/*
 # Build
 frontend/dist/
 
+# Coverage
+.coverage
+coverage-backend.xml
+frontend/coverage/
+
 # Database
 backend/*.db
 
