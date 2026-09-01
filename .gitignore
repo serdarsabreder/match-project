@@ -28,3 +28,4 @@ backend/*.db
 .DS_Store
 # Temporal build artifacts (git-ignored so opencode does not auto-commit them)
 payment-todos.md
+prev_body.md
