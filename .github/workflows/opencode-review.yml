@@ -10,7 +10,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
     steps:
       - name: Checkout repository
@@ -22,8 +22,10 @@ jobs:
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/big-pickle
+          use_github_token: true
           prompt: |
             You are a code reviewer for the Match booking system. Your role is to perform an initial review of the PR and leave actionable comments. You must NOT approve the PR.
 

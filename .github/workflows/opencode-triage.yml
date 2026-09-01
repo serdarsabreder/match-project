@@ -32,8 +32,10 @@ jobs:
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/big-pickle
+          use_github_token: true
           prompt: |
             You are a triage assistant for the Match app (football field booking platform). Your goal is to classify incoming issues and request minimal reproducible steps so the team can act quickly.
 
