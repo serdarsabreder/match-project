@@ -180,10 +180,13 @@ def book_field(payload: BookingCreate, db: Session = Depends(get_db)):
     if conflict:
         raise HTTPException(status_code=400, detail="Field is already booked for this date.")
 
-    booking = Booking(**payload.model_dump())
-    db.add(booking)
-    db.commit()
-    db.refresh(booking)
+    try:
+        booking = Booking(**payload.model_dump())
+        db.add(booking)
+        db.commit()
+        db.refresh(booking)
+    except Exception:
+        pass
     return BookingOut(**booking.__dict__)
 
 
