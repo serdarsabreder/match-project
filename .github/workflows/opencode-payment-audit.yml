@@ -34,6 +34,11 @@ jobs:
             echo "No previous audit issue found"
           fi
 
+      - name: Configure git identity
+        run: |
+          git config --global user.name "opencode-payment-audit"
+          git config --global user.email "opencode-payment-audit@users.noreply.github.com"
+
       - name: Run OpenCode payment audit
         uses: anomalyco/opencode/github@latest
         env:
@@ -43,6 +48,7 @@ jobs:
           model: opencode/big-pickle
           use_github_token: true
           prompt: |
+
             You are an audit assistant for the Match payments module. Your task is to produce the weekly payments-TODOs audit body.
 
             Tech context: Stripe integration, webhook handling, refund logic, currency conversion, and timeout scenarios.
@@ -59,6 +65,21 @@ jobs:
                - Start with a heading "# Weekly Payment TODOs".
                - Add a line: "Audit date: <today's date>".
                - List findings grouped by category, with file path, line number, and a short summary for each.
-               - If there are no payment-related findings, state that clearly.
-            5. Ensure "payment-todos.md" is always written, even when no findings are found.
-            6. Ignore TODOs unrelated to payments (e.g., UI tweaks, non-payment infrastructure).
+                - If there are no payment-related findings, state that clearly.
+             5. Ensure "payment-todos.md" is always written, even when no findings are found.
+             6. Ignore TODOs unrelated to payments (e.g., UI tweaks, non-payment infrastructure).
+
+      - name: Apply audit findings to Weekly Payment TODOs issue
+        run: |
+          if [ ! -s payment-todos.md ]; then
+            printf '# Weekly Payment TODOs\n\n(No audit summary was produced this run.)\n' > payment-todos.md
+          fi
+          LABELS="area:payments,status:tech-debt"
+          if [ -n "$PREV_ISSUE" ]; then
+            gh issue edit "$PREV_ISSUE" --body-file payment-todos.md --add-label "$LABELS"
+            gh issue comment "$PREV_ISSUE" --body "Weekly payment audit completed at $(date -u +%Y-%m-%dT%H:%M:%SZ)."
+            echo "Updated audit issue #$PREV_ISSUE"
+          else
+            gh issue create --title "Weekly Payment TODOs" --body-file payment-todos.md --label "$LABELS"
+            echo "Created new audit issue"
+          fi
