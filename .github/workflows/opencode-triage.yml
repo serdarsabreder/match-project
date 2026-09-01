@@ -82,8 +82,8 @@ jobs:
           case "$AREA" in area:booking|area:payments|area:ui|area:api|area:infra) ;; *) AREA="" ;; esac
           case "$PRIORITY" in priority:high|priority:medium|priority:low) ;; *) PRIORITY="" ;; esac
 
-          if [ -n "$AREA" ]; then gh label add "${{ github.event.issue.number }}" "$AREA" || true; fi
-          if [ -n "$PRIORITY" ]; then gh label add "${{ github.event.issue.number }}" "$PRIORITY" || true; fi
+          if [ -n "$AREA" ]; then gh issue edit "${{ github.event.issue.number }}" --add-label "$AREA"; fi
+          if [ -n "$PRIORITY" ]; then gh issue edit "${{ github.event.issue.number }}" --add-label "$PRIORITY"; fi
 
           echo "Applied area=$AREA priority=$PRIORITY needs_repro=$NEEDS_REPRO on issue #${{ github.event.issue.number }}"
 
